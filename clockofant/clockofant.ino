@@ -162,6 +162,12 @@ void showClock() {
   showClockPixel(circle0[(int)floor((1 - second(local_time) / 60.0) * 29)]);
   showClockPixel(circle1[(int)floor((1 - minute(local_time) / 60.0) * 21)]);
   showClockPixel(circle2[(int)floor((1 - (hour(local_time) % 12) / 12.0) * 13)]);
+
+  // blink a colon every second
+  if (second(local_time) & 1) {
+    setPixel(3, 4, 1);
+    setPixel(4, 4, 1);
+  }
 }
 
 void loop ()
