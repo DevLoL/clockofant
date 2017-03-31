@@ -1,3 +1,88 @@
+#ifdef ESP8266
+  #define CLEAR_PANEL_PIN D8 // pin #10 on the blinkofant panel
+  #define DATA_PIN D7 // pin #8
+  #define CLOCK_PIN D5 // pin #4
+#else 
+  #define CLEAR_PANEL_PIN 10 // this goes on panel to pin #10 on the blinkofant panel
+  #define DATA_PIN 11 // pin #8
+  #define CLOCK_PIN 13 // pin #4
+#endif
+
+#define PANELS 1
+#define PANELDATA_SIZE (10*PANELS)
+
+
+uint8_t panelData[PANELDATA_SIZE];
+
+
+#include <SPI.h>
+
+void setupBlinkofant(int clear_pin, int data_pin, int clock_pin) {
+  pinMode(clear_pin, OUTPUT);
+  pinMode(data_pin, OUTPUT);
+  pinMode(clock_pin, OUTPUT);
+
+  digitalWrite(clear_pin, LOW);
+  digitalWrite(data_pin, LOW);
+  digitalWrite(clock_pin, LOW);
+
+  SPI.begin();
+  SPI.setBitOrder(LSBFIRST);
+  SPI.setDataMode(SPI_MODE0);
+  SPI.setClockDivider(SPI_CLOCK_DIV128); // biggest divider there is.
+}
+
+void screen_off() {
+  digitalWrite(CLEAR_PANEL_PIN, LOW);
+}
+
+void screen_on() {
+  digitalWrite(CLEAR_PANEL_PIN, HIGH);
+}
+
+
+void setBlink(int value) {
+  panelData[0] = value;
+}
+
+void setPixel(int x, int y, int value) {
+  int index = (y + 1) + x * 10; // y+1 because 1st bit controlls blinking
+  int byteNr = index >> 3; // division by 8
+  int bitNr = index & 0x7; // rest bei div durch 8
+
+  if (value)
+  {
+    panelData[byteNr] |= 1 << bitNr;
+  }
+  else
+  {
+    panelData[byteNr] &= ~(1 << bitNr);
+  }
+}
+
+void setAllPixel(uint8_t value) {
+  for (int i = 0; i < PANELDATA_SIZE; i++)
+  {
+    panelData[i] = value;
+  }
+}
+
+
+void shiftPixelData() {
+  screen_off();
+
+#ifdef ESP8266
+  for (int i = 0; i < PANELDATA_SIZE; i++) {
+    SPI.transfer(panelData[i]);
+  }
+#else
+  for (int i = 0; i < PANELDATA_SIZE; i++) {
+    SPSR = panelData[i];
+    while (!(SPSR & (1 << SPIF)));
+  }
+#endif
+  screen_on();
+}
 /*
   blinkytest
   for blinkofant
@@ -17,173 +102,80 @@
 
 */
 
-
 #include <Timezone.h>    // https://github.com/JChristensen/Timezone
   
 TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};     //Central European Summer Time
 TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60}; //Central European Standard Time
 Timezone timezone(CEST, CET);
 
+
+#include <NTPClient.h> // https://github.com/arduino-libraries/NTPClient
+#include <ESP8266WiFi.h> // https://github.com/esp8266/Arduino/
+#include <WiFiUdp.h>
 WiFiUDP ntpUDP;
 // 0 minutes time offset, update every hour
 // any timezone offset is dealt with by Timezone to get better precision
 NTPClient timeClient(ntpUDP, "at.pool.ntp.org", 0, 60 * 60 * 1000);
 
-static time_t local_time;
 
-
-#include <SPI.h>
-#ifdef ESP8266
-  #define CLEAR_PANEL_PIN D8 // pin #10 on the blinkofant panel
-  #define DATA_PIN D7 // pin #8
-  #define CLOCK_PIN D5 // pin #4
-#else 
-  #define CLEAR_PANEL_PIN 10 // this goes on panel to pin #10 on the blinkofant panel
-  #define DATA_PIN 11 // pin #8
-  #define CLOCK_PIN 13 // pin #4
-#endif
-
-#define PANELS 1
-#define PANELDATA_SIZE (10*PANELS)
-
-uint8_t panelData[PANELDATA_SIZE];
-
-void setBlink(int value) {
-  panelData[0] = value;
-}
-
-
-// set pixels on a specific panel
-void setPixel(int x, int y, int panel, int value) {
-  if (panel >= PANELS) {
-    // out of bounds
-    return;
-  }
-  setPixel(x + (panel * 8), y, value);
-}
-
-void setPixel(int x, int y, int value)
-{
-  int index = (y + 1) + x * 10; // y+1 because 1st bit controlls blinking
-  int byteNr = index >> 3; // division by 8
-  int bitNr = index & 0x7; // rest bei div durch 8
-
-  if (value)
-  {
-    panelData[byteNr] |= 1 << bitNr;
-  }
-  else
-  {
-    panelData[byteNr] &= ~(1 << bitNr);
-  }
-}
-
-void setAllPixel(uint8_t value)
-{
-  for (int i = 0; i < PANELDATA_SIZE; i++)
-  {
-    panelData[i] = value;
-  }
-}
-
-
-void shiftPixelData() {
-  screen_off();
-
-
-#ifdef ESP8266
-  for (int i = 0; i < PANELDATA_SIZE; i++) {
-    SPI.transfer(panelData[i]);
-  }
-#else
-  for (int i = 0; i < PANELDATA_SIZE; i++) {
-    SPSR = panelData[i];
-    while (!(SPSR & (1 << SPIF)));
-  }
-#endif
-  screen_on();
-}
-
-void setup()
-{
-  Serial.begin(9600);
-  pinMode(CLEAR_PANEL_PIN, OUTPUT);
-  pinMode(DATA_PIN, OUTPUT);
-  pinMode(CLOCK_PIN, OUTPUT);
-
-  digitalWrite(CLEAR_PANEL_PIN, LOW);
-  digitalWrite(DATA_PIN, LOW);
-  digitalWrite(CLOCK_PIN, LOW);
-
-  SPI.begin();
-  SPI.setBitOrder(LSBFIRST);
-  SPI.setDataMode(SPI_MODE0);
-  SPI.setClockDivider(SPI_CLOCK_DIV128); // biggest divider there is.
-}
-
-
-void screen_off()
-{
-  digitalWrite(CLEAR_PANEL_PIN, LOW);
-}
-
-void screen_on()
-{
-  digitalWrite(CLEAR_PANEL_PIN, HIGH);
-}
-
-
-void scanner(int panel) {
-  static int col = 0;
-  static int row = 0;
-  static bool is_row = true;
-  if (is_row) {
-    for(int c=0; c < 8; c++) {
-      setPixel(c, row, 1); 
-    }
-    row++;
-    if (row > 8) { row = 0; is_row = !is_row; }
-  } else {
-    for(int r=0; r < 9; r++) {
-      setPixel(col, r, 1);
-    }
-    col++;
-    if (col > 9) { col = 0; is_row = !is_row; }
-  }
+char ssid[] = "/dev/lol";
+char password[] = "4dprinter";
+void connectWifi() {
+    // We start by connecting to a WiFi network
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
   
-  //setPixel(col, row, 1);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.print("WiFi connected, IP address: ");
+  Serial.println(WiFi.localIP());
 }
 
+
+time_t local_time;
+
+void setup() {
+  Serial.begin(9600);
+  
+  connectWifi();
+  
+  timeClient.begin();
+  
+  setupBlinkofant(CLEAR_PANEL_PIN, DATA_PIN, CLOCK_PIN);
+}
+int circle2[14][2] = {{4, 2}, {5, 2}, {6, 2}, {6, 3}, {6, 4}, {6, 5}, {5, 5}, {4, 5}, {3, 5}, {2, 5}, {2, 4}, {2, 3}, {2, 2}, {3, 2}};
+int circle1[22][2] = {{4, 1}, {5, 1}, {6, 1}, {7, 1}, {7, 2}, {7, 3}, {7, 4}, {7, 5}, {7, 6}, {6, 6}, {5, 6}, {4, 6}, {3, 6}, {2, 6},
+                      {1, 6}, {1, 5}, {1, 4}, {1, 3}, {1, 2}, {1, 1}, {2, 1}, {3, 1}};
+int circle0[30][2] = {{4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}, {8, 1}, {8, 2}, {8, 3}, {8, 4}, {8, 5}, {8, 6}, {8, 7}, {7, 7}, {6, 7},
+                      {5, 7}, {4, 7}, {3, 7}, {2, 7}, {1, 7}, {0, 7}, {0, 6}, {0, 5}, {0, 4}, {0, 3}, {0, 2}, {0, 1}, {0, 0}, {1, 0},
+                      {2, 0}, {3, 0}};
+
+void showClockPixel(int pos[2]) {
+  setPixel(pos[1], pos[0], 1);
+}
+void showClock() {
+  // subtract from 1 as the panel's origin is in a different corner
+  showClockPixel(circle0[(int)((1 - second(local_time) / 60.0) * 30)]);
+  showClockPixel(circle1[(int)((1 - minute(local_time) / 60.0) * 22)]);
+  showClockPixel(circle2[(int)((1 - hour(local_time) / 12.0) * 14)]);
+
+}
 
 void loop ()
 {
-  
-  setAllPixel(0);
-
-  // uncomment any of these demo modes
-  //snake();
-  scanner(0);
-  //stars(2, true);
-  //flashPanels();
-  //static int i = 0;
-  //i = 10 + ((i + 1) % 100);
-  //Serial.println((1.4 + sin((millis() / 500))) * 50);
-  //stars((1.4 + sin((millis() / 500))) * 50, 1);
-  //stars(10, 1, 0, 8, 0, 1);
-  /*
-  for(int d=0; d < 3; d++) {
-    shiftPixelData();
-    delay(100);
-    for(int p=0; p < PANELDATA_SIZE; p++) {
-      if(random(0, 7.) > 0) {
-        panelData[p] = (int)panelData[p] << 1;
-      }
-    }
+  timeClient.update();
+  if (WiFi.status() != WL_CONNECTED) {
+    connectWifi();
   }
-  */
- // stars(5, 0, 0, 8, 2, 5);
-  //soulmates(3, 2, 3, 1, 1 );
 
+  local_time = timezone.toLocal(timeClient.getEpochTime());
+
+  setAllPixel(0);
+  showClock();
   shiftPixelData();
 
   delay( 100);
