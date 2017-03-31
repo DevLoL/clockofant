@@ -159,10 +159,9 @@ void showClockPixel(int pos[2]) {
 }
 void showClock() {
   // subtract from 1 as the panel's origin is in a different corner
-  showClockPixel(circle0[(int)((1 - second(local_time) / 60.0) * 30)]);
-  showClockPixel(circle1[(int)((1 - minute(local_time) / 60.0) * 22)]);
-  showClockPixel(circle2[(int)((1 - hour(local_time) / 12.0) * 14)]);
-
+  showClockPixel(circle0[(int)floor((1 - second(local_time) / 60.0) * 29)]);
+  showClockPixel(circle1[(int)floor((1 - minute(local_time) / 60.0) * 21)]);
+  showClockPixel(circle2[(int)floor((1 - (hour(local_time) % 12) / 12.0) * 13)]);
 }
 
 void loop ()
