@@ -154,13 +154,19 @@ int circle0[30][2] = {{4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}, {8, 1}, {8, 2}, {8
                       {5, 7}, {4, 7}, {3, 7}, {2, 7}, {1, 7}, {0, 7}, {0, 6}, {0, 5}, {0, 4}, {0, 3}, {0, 2}, {0, 1}, {0, 0}, {1, 0},
                       {2, 0}, {3, 0}};
 
+void showClockPixel(int pos[2], bool val) {
+  setPixel(pos[1], pos[0], val);
+}
 void showClockPixel(int pos[2]) {
-  setPixel(pos[1], pos[0], 1);
+  showClockPixel(pos, true);
 }
 void showClock() {
   // subtract from 1 as the panel's origin is in a different corner
+  // second
   showClockPixel(circle0[(int)floor((1 - second(local_time) / 60.0) * 29)]);
+  // minute
   showClockPixel(circle1[(int)floor((1 - minute(local_time) / 60.0) * 21)]);
+  // hour
   showClockPixel(circle2[(int)floor((1 - (hour(local_time) % 12) / 12.0) * 13)]);
 
   // blink a colon every second
