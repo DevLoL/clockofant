@@ -176,6 +176,21 @@ void showClock() {
   }
 }
 
+void runWild() {
+  runWild(20);
+}
+
+void runWild(int del) {
+  for (int i = 0; i < 30; i++) {
+    if (i > 0) {
+      showClockPixel(circle0[i-1], false);
+    }
+    showClockPixel(circle0[i]);
+    shiftPixelData();
+    delay(del);
+  }
+}
+
 void loop ()
 {
   timeClient.update();
@@ -186,6 +201,12 @@ void loop ()
   local_time = timezone.toLocal(timeClient.getEpochTime());
 
   setAllPixel(0);
+  static int last_minute = minute(local_time);
+  if (minute(local_time) != last_minute) {
+    runWild();
+    last_minute = minute(local_time);
+  }
+
   showClock();
   shiftPixelData();
 
