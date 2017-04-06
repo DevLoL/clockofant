@@ -200,7 +200,6 @@ void loop ()
 
   local_time = timezone.toLocal(timeClient.getEpochTime());
 
-  setAllPixel(0);
   static int last_minute = minute(local_time);
   if (minute(local_time) != last_minute) {
     runWild();
@@ -208,8 +207,12 @@ void loop ()
   }
 
   showClock();
+
   shiftPixelData();
 
-  delay( 100);
+  delay(20);
+  setAllPixel(0);
+  shiftPixelData();
+  delay(5);
 
 }
